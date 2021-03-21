@@ -1,4 +1,4 @@
-*
-
-!*.php
-!my_folder
+#ignore all kind of files
+*.*
+#except python files
+!*.py
