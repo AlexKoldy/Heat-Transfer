@@ -1,3 +1,4 @@
+# Midterm Script Part 1
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -116,14 +117,11 @@ plt.show()
 x_0 = np.array([b / 2])
 x = np.arange(b + (dx / 2), (L + b) + (dx / 2), dx) # m
 x = np.concatenate((x_0, x), axis = 0)
-i = int(len(time) / 10)
-T_list_inc = [] # Temperature list for increments 
-
 plt.figure()
 plt.plot(x, T_list[0][:, 25000], label = 'Copper')
 plt.plot(x, T_list[1][:, 25000], label = 'Aluminum')
 plt.plot(x, T_list[2][:, 25000], label = 'Steel')
-plt.title('Temperature vs. Position (at t = 250s) For All Materials')
+plt.title('Temperature vs. Position (at Steady-State) For All Materials')
 plt.xlabel('Position [m]')
 plt.ylabel('Temperature [oC]')
 plt.legend()
