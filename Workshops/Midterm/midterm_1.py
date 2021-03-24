@@ -10,8 +10,8 @@ b = 0.006 # m; base plate's thickness
 w = 0.06 # m; base plate's length and width 
 g = 0.00275 # m; air gap between each fin
 q = 250 # W; electrical component power generation 
-h = 10 # W/m^2K; convective coefficent
-n = 5 # number of nodes the fin is broken down to
+h = 50 # W/m^2K; convective coefficent
+n = 10 # number of nodes the fin is broken down to
 dx = L / n # m
 dt = 0.01 # s; time step
 T_inf = 25 # oC; ambient temperature
@@ -39,6 +39,7 @@ properties = np.array([[k_co, rho_co, c_co], # Copper
 T_list = [] # List of temperature arrays
 
 '''Simulation'''
+it = 0 # iterator
 for i in range(3):
     k = properties[i, 0]
     rho = properties[i, 1]
@@ -100,6 +101,16 @@ for i in range(3):
         p = p + 1
     
     T_list.append(T)
+    if (it == 0):
+        print("Copper time constants [s]: ")
+        print(tau)
+    elif (it == 1):
+        print("Aluminum time constants [s]: ")
+        print(tau)
+    elif (it == 2):
+        print("Steel time constants [s]: ")
+        print(tau)
+    it = it + 1
     
 '''Plots'''
 # Temperature vs. Time for base plates of each material

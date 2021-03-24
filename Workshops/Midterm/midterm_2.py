@@ -11,7 +11,7 @@ w = 0.06 # m; base plate's length and width
 g = 0.00275 # m; air gap between each fin
 q = 250 # W; electrical component power generation 
 h_list = np.arange(10, 110, 10) # W/m^2K; convective coefficent
-n = 5 # number of nodes the fin is broken down to
+n = 10 # number of nodes the fin is broken down to
 dx = L / n # m
 dt = 0.01 # s; time step
 T_inf = 25 # oC; ambient temperature
@@ -25,6 +25,7 @@ c_al = 910 # J/kgK
 T_list = [] # List of temperature arrays
 
 '''Simulation'''
+it = 0 # iterator
 for h in h_list:
     k = k_al
     rho = rho_al
@@ -84,7 +85,7 @@ for h in h_list:
         T[n, p + 1] = T[n, p] + (dt / C[n]) * (((T[n - 1, p] - T[n, p]) / R[2]) + ((T_inf - T[n, p]) / ((R[4]) * (1 + Bi)))) # oC
     
         p = p + 1
-    
+        
     T_list.append(T)
     
 '''Plots'''
@@ -94,7 +95,7 @@ for Temperature in T_list:
     T_list_inc.append(Temperature[0, 25000])
 plt.figure()
 plt.plot(h_list, T_list_inc)
-plt.title('Base Temperature vs. Convective Coefficient (at Steady-State)')
+plt.title('Base Temperature vs. Convective Coefficient (at Steady-State) for Aluminum')
 plt.xlabel('Convective Coefficient [W/m^2/K]')
 plt.ylabel('Base Temperature [oC]')
 plt.show()
@@ -108,7 +109,7 @@ i = 0
 for Temperature in T_list:
     plt.plot(x, Temperature[:, 25000], label = 'h =' + str(h_list[i]) + ' W/m^2/K')
     i = i + 1
-plt.title('Temperature vs. Position (at Steady-State) for Various Convective Coefficients')
+plt.title('Temperature vs. Position (at Steady-State) for Various Convective Coefficients (Aluminum)')
 plt.xlabel('Position [m]')
 plt.ylabel('Temperature [oC]')
 plt.legend()
