@@ -11,7 +11,7 @@ w = 0.06 # m; base plate's length and width
 g = 0.00275 # m; air gap between each fin
 q = 250 # W; electrical component power generation 
 h_list = np.arange(10, 110, 10) # W/m^2K; convective coefficent
-n = 10 # number of nodes the fin is broken down to
+n = 5 # number of nodes the fin is broken down to
 dx = L / n # m
 dt = 0.01 # s; time step
 T_inf = 25 # oC; ambient temperature
@@ -33,10 +33,10 @@ for h in h_list:
     
     Bi = ((h * t / 4) / k)
     R = np.array([1 / (h * w * g / 2), # 0, inf
-                  (dx / 2) / (k * w * t / 2), # 0, 1
-                  dx / (k * w * t / 2), # i, i + 1
-                  (1 / (h * dx)) * (1 + Bi), # i, inf
-                  1 / ((1 / ((1 / (h * dx)) + ((t / 4) / (k * dx)))) + (1 / ((1 / (h * t / 2)) + ((dx / 2) / (k * t / 2)))))]) # n, inf
+                 (dx / 2) / (k * w * t / 2), # 0, 1
+                 dx / (k * w * t / 2), # i, i + 1
+                 (1 / (h * w * dx)) * (1 + Bi), # i, inf
+                 1 / ((1 / ((1 / (h * w * dx)) + ((t / 4) / (k * w * dx)))) + (1 / ((1 / (h * w * t / 2)) + ((dx / 2) / (k * w * t / 2)))))]) # n, inf
     C = np.ones(n + 1) * rho * c * w * (t / 2) * dx # J/oC; capacitance
     C[0] = rho * c * w * b * (0.5 * (g + t)) # J/oC; capacitance of baseplate
     
