@@ -4,6 +4,9 @@ Alexander Koldy, William Lin, Solbi Oh'''
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Close all plots
+plt.close('all')
+
 '''===========CONSTANTS=========='''
 sigma = 5.669e-8 # W/m^2K^4; Stefan-Boltzmann Constant
 epsilon= 0.92 # emissivity; (Reference: https://www.engineeringtoolbox.com/emissivity-coefficients-d_447.html)
@@ -29,7 +32,7 @@ t_myc = 0.01905 # m
 A_myc_top_in = (w_myc - 2*t_myc) * (l_myc - 2*t_myc) # m^2
 A_myc_top_out = w_myc * l_myc # m^2
 A_myc_side_in = 2 * (w_myc - 2*t_myc) * (h_myc - 2*t_myc) + 2 * (l_myc - 2*t_myc) * (h_myc - 2*t_myc) # m^2
-A_myc_side_out = 2* (w_myc * h_myc) + 2 * (l_myc * h_myc) # m^2
+A_myc_side_out = 2 * (w_myc * h_myc) + 2 * (l_myc * h_myc) # m^2
 A_myc_bot_in = (w_myc - 2*t_myc) * (l_myc - 2*t_myc) # m^2
 A_myc_bot_out = w_myc * l_myc # m^2
 
@@ -84,39 +87,135 @@ R_h_air_myc_top = 1 / (h_air_myc * A_myc_top_in) # oC/W
 R_k_myc_top = t_myc / (k_myc * A_myc_top_out) # oC/W
 R_h_myc_atm_top = 1 / (h_myc_atm * A_myc_top_out) # oC/W
 
-'''==========SIMULATIONS=========='''
-#def 1_node_model():
-    #continue
+'''----------Capacitances----------'''
+# Water Node
+C_water = c_p_water * rho_water * A_glass_bot_in * (h_glass - t_glass_bot) # J/K
+    
+# Glass Cup Nodes
+C_glass_bot = c_p_glass * rho_glass * A_glass_bot_out * t_glass_bot # J/K
+C_glass_side = c_p_glass * rho_glass * (A_glass_bot_out - A_glass_bot_in) * (h_glass - t_glass_bot) # J/K
+    
+# Air
+C_air_side = c_p_air * rho_air * (A_myc_bot_in - A_glass_bot_out) * (h_glass) # J/K
+C_air_top = c_p_air * rho_air * A_myc_bot_in * (h_myc - 2*t_myc - h_glass) # J/K
+    
+# Mycelium Nodes
+C_myc_bot = c_p_myc * rho_myc * A_myc_bot_out * t_myc # J/K
+C_myc_side = c_p_myc * rho_myc * (A_myc_bot_out - A_myc_bot_in) * (h_myc - 2*t_myc) # J/K
+C_myc_top = c_p_myc * rho_myc * A_myc_top_out * t_myc # J/K
 
-def six_node_model():
+'''==========SIMULATIONS=========='''
+def one_node_model():
     '''----------Setup----------'''
-    steps = 5000001 # total amount of timesteps
+    steps = 2000001 # total amount of timesteps
     t = np.zeros(steps) # s
-    dt = 0.01 # s
+    dt = 0.1 # s
     t_sim = steps * dt # s; total simulation time
     p = 0
     
+    '''----------Resistances----------'''
+    # Bottom
+    R_bot = R_h_water_glass_bot + R_k_glass_bot + R_k_myc_bot + R_h_myc_atm_bot
+    
+    # Top
+    R_top = R_h_water_top + R_h_water_air_top + R_h_air_myc_top + R_k_myc_top + R_h_myc_atm_top
+    
     '''----------Capacitance----------'''
-    # Water Node
-    C_water = c_p_water * rho_water * A_glass_bot_in * (h_glass - t_glass_bot) # J/K
-    
-    # Glass Cup Nodes
-    C_glass_bot = c_p_glass * rho_glass * A_glass_bot_out * t_glass_bot # J/K
-    C_glass_side = c_p_glass * rho_glass * (A_glass_bot_out - A_glass_bot_in) * (h_glass - t_glass_bot) # J/K
-    
-    # Air
-    C_air_side = c_p_air * rho_air * (A_myc_bot_in - A_glass_bot_out) * (h_glass) # J/K
-    C_air_top = c_p_air * rho_air * A_myc_bot_in * (h_myc - 2*t_myc - h_glass) # J/K
-    
-    # Mycelium Nodes
-    C_myc_bot = c_p_myc * rho_myc * A_myc_bot_out * t_myc # J/K
-    C_myc_side = c_p_myc * rho_myc * (A_myc_bot_out - A_myc_bot_in) * (h_myc - 2*t_myc) # J/K
-    C_myc_top = c_p_myc * rho_myc * A_myc_top_out * t_myc # J/K
+    # Total
+    C = C_water + C_glass_bot + C_glass_side + C_air_side + C_air_top + C_myc_bot + C_myc_side + C_myc_top
     
     '''----------Temperatures----------'''
     # Water Node
     T_water = np.zeros(steps) # oC
     T_water[0] = 32.2 # oC
+    
+    # Enviornment
+    T_inf = 20 # oC; ambient temperature
+    
+    '''----------Simulation----------'''
+    while p < steps - 1:
+        # Update radiation
+        h_r_glass_myc = epsilon * sigma * (T_water[p]**2 + T_water[p]**2) * (T_water[p] + T_water[p]) # W/m^2K
+        R_r_glass_myc_side = 1 / (h_r_glass_myc * A_glass_side_out) # oC/W
+    
+        # Update resistances
+        R_side = R_h_water_glass_side + R_k_glass_side + 1 / ((1 / (R_h_glass_air_side + R_h_air_myc_side)) + (1 / R_r_glass_myc_side)) + R_k_myc_side + R_h_myc_atm_side
+        R = 1 / (1/R_bot + 1/R_side + 1/R_top)
+        
+        T_water[p + 1] = T_water[p] + (dt/C) * ((T_inf - T_water[p]) / R)
+        
+        # Increment
+        t[p + 1] = t[p] + dt
+        p += 1
+    
+    A = T_water
+    
+    '''----------Setup----------'''
+    steps = 2000001 # total amount of timesteps
+    t = np.zeros(steps) # s
+    dt = 0.1 # s
+    t_sim = steps * dt # s; total simulation time
+    p = 0
+    
+    '''----------Resistances----------'''
+    # Bottom
+    R_bot = R_h_water_glass_bot + R_k_glass_bot + R_k_myc_bot + R_h_myc_atm_bot
+    
+    # Top
+    R_top = R_h_water_top + R_h_water_air_top + R_h_air_myc_top + R_k_myc_top + R_h_myc_atm_top
+    
+    '''----------Capacitance----------'''
+    # Total
+    C = C_water + C_glass_bot + C_glass_side + C_air_side + C_air_top# + C_myc_bot + C_myc_side + C_myc_top
+    
+    '''----------Temperatures----------'''
+    # Water Node
+    T_water = np.zeros(steps) # oC
+    T_water[0] = 32.2 # oC
+    
+    # Enviornment
+    T_inf = 20 # oC; ambient temperature
+    
+    '''----------Simulation----------'''
+    while p < steps - 1:
+        # Update radiation
+        h_r_glass_myc = epsilon * sigma * (T_water[p]**2 + T_water[p]**2) * (T_water[p] + T_water[p]) # W/m^2K
+        R_r_glass_myc_side = 1 / (h_r_glass_myc * A_glass_side_out) # oC/W
+    
+        # Update resistances
+        R_side = R_h_water_glass_side + R_k_glass_side + 1 / ((1 / (R_h_glass_air_side + R_h_air_myc_side)) + (1 / R_r_glass_myc_side)) + R_k_myc_side + R_h_myc_atm_side
+        R = 1 / (1/R_bot + 1/R_side + 1/R_top)
+        
+        T_water[p + 1] = T_water[p] + (dt/C) * ((T_inf - T_water[p]) / R)
+        
+        # Increment
+        t[p + 1] = t[p] + dt
+        p += 1
+    
+    plt.figure()
+    plt.plot(t / 3600, T_water, label = "Not Including Mycelium Capacity")
+    plt.plot(t / 3600, A, label = "Including Mycelium Capacity")
+    plt.xlabel('Time [hour]')
+    plt.ylabel('Temperature [oC]')
+    plt.xlim(0, 40)
+    plt.title("1 Node Model")
+    plt.legend()
+    plt.show()
+        
+
+def six_node_model():
+    '''----------Setup----------'''
+    steps = 1000001 # total amount of timesteps
+    t = np.zeros(steps) # s
+    dt = 0.1 # s
+    t_sim = steps * dt # s; total simulation time
+    p = 0
+    
+
+    '''----------Temperatures----------'''
+    # Water Node
+    T_water = np.zeros(steps) # oC
+    T_water[0] = 10 # oC
     
     # Glass Cup Nodes
     T_glass_bot = np.zeros(steps) # oC
@@ -135,6 +234,12 @@ def six_node_model():
     # Enviornment
     T_inf = 20 # oC; ambient temperature
     
+    # Air Temperature Nodes
+    T_air_side = np.zeros(steps) # oC
+    T_air_top = np.zeros(steps) # oC
+    T_air_side[0] = T_glass_side[0] - ((R_k_glass_side/2 + R_h_glass_air_side) / (R_k_glass_side/2 + R_h_glass_air_side + R_h_air_myc_side + R_k_myc_side/2)) * (T_glass_side[0] - T_myc_side[0])
+    T_air_top[0] = T_water[0] - ((R_h_water_top + R_h_water_air_top) / (R_h_water_top + R_h_water_air_top + R_h_air_myc_top + R_k_myc_top/2)) * (T_water[0] - T_myc_top[0])
+    
     '''----------Simulation----------'''
     while p < steps - 1:
         # Update radiation
@@ -151,23 +256,45 @@ def six_node_model():
         # Side
         T_glass_side[p + 1] = T_glass_side[p] + (dt/(C_glass_side + C_air_side + C_air_top)) * (((T_water[p] - T_glass_side[p]) / (R_h_water_glass_side + R_k_glass_side/2)) + ((T_myc_side[p] - T_glass_side[p]) / (R_k_glass_side/2 + (1 / ((1 / (R_h_glass_air_side + R_h_air_myc_side)) + (1 / R_r_glass_myc_side))) + R_k_myc_side/2)))
         T_myc_side[p + 1] = T_myc_side[p] + (dt/C_myc_side) * (((T_glass_side[p] - T_myc_side[p]) / (R_k_glass_side/2 + (1 / ((1 / (R_h_glass_air_side + R_h_air_myc_side)) + (1 / R_r_glass_myc_side))) + R_k_myc_side/2)) + ((T_inf - T_myc_side[p]) / (R_k_myc_side/2 + R_h_myc_atm_side)))
+        T_air_side[p + 1] = T_glass_side[p + 1] - ((R_k_glass_side/2 + R_h_glass_air_side) / (R_k_glass_side/2 + R_h_glass_air_side + R_h_air_myc_side + R_k_myc_side/2)) * (T_glass_side[p + 1] - T_myc_side[p + 1])
     
         # Top
         T_myc_top[p + 1] = T_myc_top[p] + (dt/C_myc_top) * (((T_water[p] - T_myc_top[p]) / (R_h_water_top + R_h_water_air_top + R_h_air_myc_top + R_k_myc_top/2)) + ((T_inf - T_myc_top[p]) / (R_k_myc_top/2 + R_h_myc_atm_top)))
+        T_air_top[p + 1] = T_water[p + 1] - ((R_h_water_top + R_h_water_air_top) / (R_h_water_top + R_h_water_air_top + R_h_air_myc_top + R_k_myc_top/2)) * (T_water[p + 1] - T_myc_top[p + 1])
         
         # Increment
         t[p + 1] = t[p] + dt
         p += 1
         
-        # do we need to consider entire capacitance or only the indivial note capacitance?
-        # should we lump both top and side air to the side of the mug?
-        # what values to put for convective coefs? (there is a large range)
-        # fluids in series? 
+        
     plt.figure()
-    plt.plot(t, T_water)
+    plt.plot(t / 60, T_water, label = "Water")
+    plt.plot(t / 60, T_glass_bot, label = "Glass (bottom)")
+    plt.plot(t / 60, T_glass_side, label = "Glass (side)")
+    plt.plot(t / 60, T_myc_bot, label = "Mycelium (bottom)")
+    plt.plot(t / 60, T_myc_side, label = "Mycelium (side)")
+    plt.plot(t / 60, T_myc_top, label = "Mycelium (top)")
+    plt.plot(t / 60, T_air_side, label = "Air (side)")
+    plt.plot(t / 60, T_air_top, label = "Air (top)")
+    plt.xlabel('Time [min]')
+    plt.ylabel('Temperature [oC]')
+    plt.xlim(0, 400)
+    plt.title("6 Node Model")
+    plt.legend()
 
+#one_node_model()
 six_node_model()
-    
 
-
+# Chapter 1
+# 2 node model
+# 1 vs 6: Capacity carrying nodes, but temps in system
+# - in betweeen capactiy carrying nodes: we have surface temps
+# Show 1 node plot w and w/o myc
+# Table of capacitance -> Bar graph of capacitance
+# What is the temperature of the air?
+# Show plots we have now + weighted average plots
+# A plot that has 3 curves on it:
+    # - 2 1 Node prediction (all capactiance -> - myc capacitance)
+    # - 1 6 Node curve of water
+    # - 
  
